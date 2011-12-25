@@ -52,7 +52,7 @@ endif
 
 # Optional module sources
 ifneq ($(findstring HAVE_AVS 1, $(CONFIG)),)
-SRCCLI += input/avs.c
+SRCCLI += input/avs.c filters/video/subtitles.c
 endif
 
 ifneq ($(findstring HAVE_THREAD 1, $(CONFIG)),)

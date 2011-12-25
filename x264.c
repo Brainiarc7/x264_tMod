@@ -88,6 +88,7 @@ typedef struct {
 /* file i/o operation structs */
 cli_input_t cli_input;
 static cli_output_t cli_output;
+int add_sub(char *filename);
 
 /* video filter operation struct */
 static cli_vid_filter_t filter;
@@ -1035,6 +1036,9 @@ typedef enum
     OPT_OUTPUT_CSP,
     OPT_INPUT_RANGE,
     OPT_RANGE,
+#if HAVE_AVS
+    OPT_SUB,
+#endif
     OPT_AUDIOFILE,
     OPT_AUDIODEMUXER,
     OPT_AUDIOTRACK,
@@ -1221,6 +1225,9 @@ static struct option long_options[] =
     { "dts-compress",      no_argument, NULL, OPT_DTS_COMPRESSION },
     { "output-csp",  required_argument, NULL, OPT_OUTPUT_CSP },
     { "input-range", required_argument, NULL, OPT_INPUT_RANGE },
+#if HAVE_AVS
+    { "sub",         required_argument, NULL, OPT_SUB},
+#endif
     { "audiofile",   required_argument, NULL, OPT_AUDIOFILE },
     { "ademuxer",    required_argument, NULL, OPT_AUDIODEMUXER },
     { "atrack",      required_argument, NULL, OPT_AUDIOTRACK },
@@ -1724,6 +1731,12 @@ static int parse( int argc, char **argv, x264_param_t *param, cli_opt_t *opt )
                 FAIL_IF_ERROR( parse_enum_value( optarg, range_names, &param->vui.b_fullrange ), "Unknown range `%s'\n", optarg );
                 input_opt.output_range = param->vui.b_fullrange += RANGE_AUTO;
                 break;
+#if HAVE_AVS
+            case OPT_SUB:
+                if (!add_sub(optarg))
+                    x264_cli_log( "x264", X264_LOG_WARNING, "too many subtitles, \"%s\" ignored\n", optarg );
+                break;
+#endif
             case OPT_AUDIOCODEC:
                 audio_enc = optarg;
                 if( !strcmp( audio_enc, "none" ) )
