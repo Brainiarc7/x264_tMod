@@ -37,6 +37,10 @@
 #include "common/visualize.h"
 #endif
 
+#if HAVE_OPENCL
+#include "common/opencl.h"
+#endif
+
 //#define DEBUG_MB_TYPE
 
 #define bs_write_ue bs_write_ue_big
@@ -527,6 +531,23 @@ static int x264_validate_parameters( x264_t *h, int b_open )
     h->i_thread_frames = h->param.b_sliced_threads ? 1 : h->param.i_threads;
     if( h->i_thread_frames > 1 )
         h->param.nalu_process = NULL;
+
+    if( h->param.b_opencl )
+    {
+#if !HAVE_OPENCL
+        x264_log( h, X264_LOG_WARNING, "OpenCL: not compiled with OpenCL support, disabling\n" );
+        h->param.b_opencl = 0;
+#elif BIT_DEPTH > 8
+        x264_log( h, X264_LOG_WARNING, "OpenCL lookahead does not support high bit depth, disabling opencl\n" );
+        h->param.b_opencl = 0;
+#else
+        if( h->param.i_width < 32 || h->param.i_height < 32 )
+        {
+            x264_log( h, X264_LOG_WARNING, "OpenCL: frame size is too small, disabling opencl\n" );
+            h->param.b_opencl = 0;
+        }
+#endif
+    }
 
     h->param.i_keyint_max = x264_clip3( h->param.i_keyint_max, 1, X264_KEYINT_MAX_INFINITE );
     if( h->param.i_keyint_max == 1 )
@@ -1384,6 +1405,11 @@ x264_t *x264_encoder_open( x264_param_t *param )
         if( allocate_threadlocal_data && x264_macroblock_cache_allocate( h->thread[i] ) < 0 )
             goto fail;
     }
+
+#if HAVE_OPENCL
+    if( h->param.b_opencl && x264_opencl_init( h ) < 0 )
+        h->param.b_opencl = 0;
+#endif
 
     if( x264_lookahead_init( h, i_slicetype_length ) )
         goto fail;
@@ -2810,6 +2836,11 @@ int     x264_encoder_encode( x264_t *h,
     int i_nal_type, i_nal_ref_idc, i_global_qp;
     int overhead = NALU_OVERHEAD;
 
+#if HAVE_OPENCL
+    if( h->opencl.b_fatal_error )
+        return -1;
+#endif
+
     if( h->i_thread_frames > 1 )
     {
         thread_prev    = h->thread[ h->i_thread_phase ];
@@ -3557,6 +3588,10 @@ void    x264_encoder_close  ( x264_t *h )
     int b_print_pcm = h->stat.i_mb_count[SLICE_TYPE_I][I_PCM]
                    || h->stat.i_mb_count[SLICE_TYPE_P][I_PCM]
                    || h->stat.i_mb_count[SLICE_TYPE_B][I_PCM];
+
+#if HAVE_OPENCL
+    x264_opencl_free( h );
+#endif
 
     x264_lookahead_delete( h );
 

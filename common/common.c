@@ -178,6 +178,9 @@ void x264_param_default( x264_param_t *param )
     param->b_pic_struct = 0;
     param->b_fake_interlaced = 0;
     param->i_frame_packing = -1;
+    param->b_opencl = 0;
+    param->i_opencl_device = 0;
+    param->psz_clbin_file = NULL;
     param->i_opts_write = X264_OPTS_FULL;
 }
 
@@ -1277,6 +1280,12 @@ int x264_param_parse( x264_param_t *p, const char *name, const char *value )
         p->b_fake_interlaced = atobool(value);
     OPT("frame-packing")
         p->i_frame_packing = atoi(value);
+    OPT("opencl")
+        p->b_opencl = atobool( value );
+    OPT("opencl-clbin")
+        p->psz_clbin_file = strdup( value );
+    OPT("opencl-device")
+        p->i_opencl_device = atoi( value );
     else
         return X264_PARAM_BAD_NAME;
 #undef OPT
